@@ -1,0 +1,6 @@
+---
+# concurrency is the # of threads a sidekiq process creates, by default it's 25
+:concurrency: 25
+:queues:
+  - priority
+  - default

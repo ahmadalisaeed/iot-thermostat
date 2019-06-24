@@ -1,0 +1,49 @@
+version: '3'
+services:
+  postgres:
+    image: postgres:10-alpine
+    container_name: iot_thermostats-psql
+    ports:
+      - 5432
+  redis:
+    image: redis:4-alpine
+    command: redis-server
+    container_name: iot_thermostats-redis
+    ports:
+      - 6379
+  web:
+    container_name: iot_thermostats-web-app
+    image: iot_thermostats-web-app:latest
+    build:
+      context: .
+      args:
+        RAILS_ENV: "development"
+        DATABASE_URL: "postgres://postgres@postgres:5432/bouncer_development?pool=5"
+    environment:
+      RAILS_ENV: "production"
+    environment: &environment_default
+      RAILS_ENV: "development"
+      DATABASE_URL: "postgres://postgres@postgres:5432/bouncer_development?pool=5"
+    command: bash -c "rm -f tmp/pids/server.pid && bundle exec rails s -p 5000 -b '0.0.0.0'"
+    volumes:
+      - .:/iot_thermostats
+    ports:
+      - "5000:5000"
+    links:
+      - postgres
+      - redis
+    tty: true
+    stdin_open: true
+  sidekiq:
+    container_name: iot_thermostats-sidekiq
+    image: iot_thermostats-web-app:latest
+    command: sidekiq -r /iot_thermostats -C /iot_thermostats/config/sidekiq.yml -c 5
+    stdin_open: true
+    tty: true
+    links:
+      - postgres
+      - redis
+    environment:
+      <<: *environment_default
+    volumes:
+      - .:/iot_thermostats
